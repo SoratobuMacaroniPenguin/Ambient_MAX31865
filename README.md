@@ -4,5 +4,7 @@
 - Temperature board MAX31865 (adafruite MAX31865 compatible)
 - Iot server ambient [https://ambidata.io/](https://ambidata.io/)
 - Development language Micropython
-- Used library - MAX31865 (
+- Used library
+    - max31865.py (https://github.com/SoratobuMacaroniPenguin/max31865/blob/main/max31865.py)
+    - ambient.py (https://github.com/AmbientDataInc/ambient-python-lib/blob/master/ambient.py)
  
