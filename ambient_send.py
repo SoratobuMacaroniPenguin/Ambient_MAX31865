@@ -9,6 +9,8 @@
 import password_file
 import time
 import machine
+import ntptime
+import utime
 
 #sensor init area
 from machine import Pin , SoftSPI
@@ -49,52 +51,46 @@ def do_connect():
             time.sleep(3)
 
 def main():
-    # ディープスリープから起こされたかをチェック
-    if machine.reset_cause() == machine.DEEPSLEEP_RESET:
-        print('woke from a deep sleep')
-
     do_connect()
-    #am = ambient.Ambient( CHANNEL_ID , WRITE_KEY)
-
-    # デバイスを起こすための RTC.ALARM0 を設定
     rtc = machine.RTC()
-    rtc.irq(trigger=rtc.ALARM0, wake=machine.DEEPSLEEP)
-
-    # 10秒後に RTC.ALARM0 を発火して、デバイスを起こすよう設定
-    rtc.alarm(rtc.ALARM0, 53000)
-
-    #while True:
-    max_board_switch.value(1) #max boead on
-    time.sleep(1)
-    temp = sensor.temperature
-    d1 = '{:.1f}'.format(temp)
-    print("temp",d1)
-
-    #send Ambient
-    print("ambient send")
-    data = {'writeKey': WRITE_KEY, 'd1' : d1}
-    json_data = json.dumps(data)
-    try:
-        r =urequests.post(url,data=json_data,headers={"Content-Type": "application/json"},timeout=10)
-        print("ambient result = ",r.status_code)
-    except Timeout:
-        print("ambient timeout")
-        pass
-    #try:
-    #    r = am.send({'d1': "{:.1f}".format(temp)})
-    #    print(r.status_code)
-    except urequests.exceptions.RequestException as e:
-        print('request failed: ', e)
+    #rtc.datetime((2017, 8, 23, 1, 12, 48, 0, 0))
+    #rtc.datetime()
+    ntptime.settime()
+    #utime.localtime(utime.mktime(utime.localtime()) + 9 *3600)
+    print("UTC=",rtc.datetime())
+    while True:
+        #wake
+        print("wake")
+        do_connect()
+        max_board_switch.value(1) #max boead on
+        time.sleep(0.1)
+        temp = sensor.temperature
+        d1 = '{:.1f}'.format(temp)
+        print("temp",d1)
     
-    #sleep準備
-    max_board_switch.value(0) #max board off
-    sta_if.active(False) #wifi off
-    time.sleep(5)
-    # ディープスリープに入る
-    print("go sleep")
-    machine.deepsleep()
-#        time.sleep(30)
-
+        #send Ambient
+        n = utime.localtime(utime.time() + 9 * 3600)
+        data = {'created': str(n[0]) + '-' + str(n[1]) + '-' + str(n[2]) + ' ' + str(n[3]) + ':' + str(n[4]) + ':' + str(n[5]), 'writeKey': WRITE_KEY, 'd1' : d1}
+        print(data)
+        json_data = json.dumps(data)
+        print("ambient send")
+        try:
+            r =urequests.post(url,data=json_data,headers={"Content-Type": "application/json"},timeout=10)
+            print("ambient result = ",r.status_code)
+        except Timeout:
+            print("ambient timeout")
+        except urequests.exceptions.RequestException as e:
+            print('request failed: ', e)
+        
+        #sleep準備
+        max_board_switch.value(0) #max board off
+        sta_if.disconnect()
+        sta_if.active(False) #wifi off
+        time.sleep(0.1)
+        # ライトスリープに入る
+        print("go sleep")
+        machine.lightsleep(60000)
+        
 
 if __name__ == "__main__":
     main()
